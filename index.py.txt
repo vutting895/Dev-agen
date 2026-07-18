@@ -1,0 +1,188 @@
+import os, uuid, json, sys
+from pathlib import Path
+from typing import List
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+
+# Tools inline for Vercel (no chroma - use memory dict for serverless)
+try:
+    import requests
+    from bs4 import BeautifulSoup
+except:
+    requests = None
+
+# Config
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+MODEL = os.getenv("AGENT_MODEL", "gpt-4o-mini")
+
+app = FastAPI(title="Gen Agent Vercel", version="3.0")
+
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+RESEARCH_STORE = {}
+
+class ChatRequest(BaseModel):
+    agent_type: str = "coder"
+    message: str
+    research_context: str = ""
+
+def fetch_url_content(url: str, max_chars=6000):
+    try:
+        if not requests:
+            return f"[No requests lib] {url}"
+        headers = {"User-Agent": "Mozilla/5.0 GenAgent Vercel"}
+        r = requests.get(url, headers=headers, timeout=8)
+        r.raise_for_status()
+        soup = BeautifulSoup(r.text, 'html.parser')
+        for tag in soup(["script","style","nav","footer"]):
+            tag.decompose()
+        text = soup.get_text(separator='\n')
+        lines = [l.strip() for l in text.splitlines() if l.strip()]
+        return '\n'.join(lines)[:max_chars]
+    except Exception as e:
+        return f"[Error fetching {url}: {e}]"
+
+def read_file_content(file_bytes: bytes, filename: str, max_chars=6000):
+    try:
+        ext = Path(filename).suffix.lower()
+        if ext == '.pdf':
+            try:
+                import PyPDF2, io
+                reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
+                text = ""
+                for page in reader.pages[:5]:
+                    text += page.extract_text() or ""
+                return text[:max_chars]
+            except Exception as e:
+                return f"[PDF read error: {e}]"
+        else:
+            return file_bytes.decode('utf-8', errors='ignore')[:max_chars]
+    except Exception as e:
+        return f"[Read error: {e}]"
+
+def analyze_research(sources_text: str):
+    # Keyword based expert role detection (works without OpenAI)
+    txt = sources_text.lower()
+    keywords = []
+    if "python" in txt: keywords.append("Python")
+    if "trading" in txt or "crypto" in txt or "blockchain" in txt: keywords.append("Crypto/Trading")
+    if "ai" in txt or "llm" in txt or "agent" in txt: keywords.append("AI Agent")
+    if "react" in txt or "next" in txt: keywords.append("Frontend")
+    if "fastapi" in txt or "backend" in txt: keywords.append("Backend")
+
+    role = "Senior Full-Stack & AI Engineer"
+    if keywords:
+        role = f"ผู้เชี่ยวชาญด้าน {' + '.join(keywords[:2])}"
+
+    # If OpenAI key exists, try to enhance
+    if OPENAI_API_KEY:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            prompt = f"วิเคราะห์ข้อมูลนี้แล้วสรุป JSON: {sources_text[:4000]} \nตอบ JSON: {{\"summary\":\"...\", \"key_points\": [...], \"expert_role\": \"...\"}}"
+            resp = client.chat.completions.create(model=MODEL, messages=[{"role":"user","content":prompt}], response_format={"type":"json_object"})
+            data = json.loads(resp.choices[0].message.content)
+            data.setdefault("keywords", keywords)
+            return data
+        except Exception as e:
+            pass
+
+    return {
+        "summary": f"วิเคราะห์จาก {len(sources_text)} ตัวอักษร พบเรื่อง {', '.join(keywords) if keywords else 'ทั่วไป'}",
+        "key_points": [
+            f"พบข้อมูลจาก {len(sources_text)} ตัวอักษร",
+            f"Keywords: {', '.join(keywords) if keywords else 'General'}",
+            "พร้อมส่งต่อให้ Expert Agent สวมบทบาท"
+        ],
+        "keywords": keywords or ["General"],
+        "expert_role": role
+    }
+
+@app.get("/api")
+def api_root():
+    return {"status": "Gen Agent Vercel Running", "version": "vercel-3.0", "endpoints": ["/api/research/upload", "/api/chat"]}
+
+@app.get("/api/agents")
+def list_agents():
+    return {
+        "researcher": {"name": "Research Agent", "role": "วิเคราะห์ข้อมูล"},
+        "coder": {"name": "Expert Coder Agent", "role": "สวมบทบาทตามข้อมูลวิจัย"},
+        "support": {"name": "Support Manager", "role": "จัดการระบบ"}
+    }
+
+@app.post("/api/research/upload")
+async def research_upload(
+    links: str = Form(default="[]"),
+    files: List[UploadFile] = File(default=[])
+):
+    try:
+        link_list = json.loads(links) if links else []
+    except:
+        link_list = [l.strip() for l in links.split(",") if l.strip()] if links else []
+
+    links_contents = []
+    for url in link_list:
+        if not url: continue
+        content = fetch_url_content(url)
+        links_contents.append({"url": url, "content": content})
+
+    files_contents = []
+    combined = ""
+    for f in files:
+        if not f.filename: continue
+        data = await f.read()
+        content = read_file_content(data, f.filename)
+        files_contents.append({"name": f.filename, "content": content})
+        combined += f"\n\n[FILE {f.filename}]:\n{content[:3000]}"
+
+    for lc in links_contents:
+        combined += f"\n\n[WEB {lc['url']}]:\n{lc['content'][:3000]}"
+
+    result = analyze_research(combined)
+    research_id = uuid.uuid4().hex[:10]
+    RESEARCH_STORE[research_id] = {"result": result, "combined": combined, "links": link_list, "files": [x["name"] for x in files_contents]}
+
+    return {
+        "research_id": research_id,
+        "expert_role": result.get("expert_role"),
+        "summary": result.get("summary"),
+        "key_points": result.get("key_points"),
+        "keywords": result.get("keywords"),
+        "support_log": [
+            f"Processed {len(link_list)} links",
+            f"Processed {len(files_contents)} files",
+            f"Expert: {result.get('expert_role')}",
+            f"ID: {research_id}"
+        ]
+    }
+
+@app.post("/api/chat")
+def chat(req: ChatRequest):
+    # Mock expert chat that uses context
+    context = req.research_context[:2000]
+    if OPENAI_API_KEY:
+        try:
+            from openai import OpenAI
+            client = OpenAI(api_key=OPENAI_API_KEY)
+            system = f"คุณคือ {req.agent_type} Expert ตอบโดยอ้างอิง context: {context}"
+            resp = client.chat.completions.create(model=MODEL, messages=[{"role":"system","content":system},{"role":"user","content":req.message}])
+            return {"agent": req.agent_type, "reply": resp.choices[0].message.content}
+        except Exception as e:
+            return {"agent": req.agent_type, "reply": f"[Error {e}] Mock reply: {req.message} with context {context[:200]}"}
+    else:
+        return {"agent": req.agent_type, "reply": f"[MOCK {req.agent_type}] ได้รับ: {req.message}\nContext: {context[:300]}... (ใส่ OPENAI_API_KEY ใน Vercel ENV เพื่อใช้ GPT จริง)"}
+
+@app.post("/api/research/{research_id}/chat")
+def chat_research(research_id: str, req: ChatRequest):
+    data = RESEARCH_STORE.get(research_id)
+    if not data:
+        return {"error": "research_id not found - Vercel serverless memory resets, please re-upload"}
+    context = data["combined"]
+    req.research_context = context
+    return chat(req)
+
+# For local testing
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
