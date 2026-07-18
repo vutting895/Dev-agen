@@ -1,95 +1,45 @@
-name: 🐳 Build and Push Docker Image to GHCR
+# Use lightweight nginx image for static content
+FROM nginx:alpine
 
-on:
-  push:
-    branches:
-      - main
-      - develop
-    tags:
-      - 'v*'
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:
+# Set working directory
+WORKDIR /usr/share/nginx/html
 
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+# Remove default nginx config
+RUN rm -rf /etc/nginx/conf.d/*
 
-jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
+# Copy project files to nginx
+COPY . .
 
-    steps:
-      - name: 📥 Checkout code
-        uses: actions/checkout@v4
+# Create custom nginx configuration for SPA
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    \
+    # Cache static files \
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
+        expires 1y; \
+        add_header Cache-Control "public, immutable"; \
+    } \
+    \
+    # Serve HTML files \
+    location / { \
+        try_files $uri $uri/ /index.html =404; \
+    } \
+    \
+    # Security headers \
+    add_header X-Frame-Options "SAMEORIGIN" always; \
+    add_header X-Content-Type-Options "nosniff" always; \
+    add_header X-XSS-Protection "1; mode=block" always; \
+}' > /etc/nginx/conf.d/default.conf
 
-      - name: 🔧 Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+# Expose port
+EXPOSE 80
 
-      - name: 🔐 Log in to GitHub Container Registry
-        if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
 
-      - name: 📝 Extract metadata
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix={{branch}}-
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: 🏗️ Build Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: false
-          load: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-
-      - name: 🧪 Test Docker image
-        run: |
-          docker run --rm -d -p 8080:80 --name test-app ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-          sleep 3
-          curl -f http://localhost:8080/ || exit 1
-          docker stop test-app
-          echo "✅ Image test passed!"
-
-      - name: 📤 Push Docker image to GHCR
-        if: github.event_name != 'pull_request'
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: ✅ Deployment Summary
-        if: github.event_name != 'pull_request'
-        run: |
-          echo "🎉 Docker image pushed successfully!"
-          echo ""
-          echo "📦 Image Details:"
-          echo "Registry: ${{ env.REGISTRY }}"
-          echo "Repository: ${{ env.IMAGE_NAME }}"
-          echo "Tags:"
-          echo "${{ steps.meta.outputs.tags }}"
-          echo ""
-          echo "🚀 Pull and run with:"
-          echo "docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
-          echo "docker run -p 80:80 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
