@@ -1,43 +1,45 @@
-# Build stage
-FROM node:18-alpine AS builder
+# Use lightweight nginx image for static content
+FROM nginx:alpine
 
-WORKDIR /app
+# Set working directory
+WORKDIR /usr/share/nginx/html
 
-# Copy package files
-COPY package*.json ./
+# Remove default nginx config
+RUN rm -rf /etc/nginx/conf.d/*
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code
+# Copy project files to nginx
 COPY . .
 
-# Build the application
-RUN npm run build 2>/dev/null || echo "No build script found"
-
-# Runtime stage
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Install only production dependencies
-COPY package*.json ./
-RUN npm ci --only=production
-
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist 2>/dev/null || echo "No dist folder"
-COPY --from=builder /app/public ./public 2>/dev/null || true
-COPY --from=builder /app/.next ./.next 2>/dev/null || true
-
-# Copy other necessary files
-COPY . .
+# Create custom nginx configuration for SPA
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    \
+    # Cache static files \
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ { \
+        expires 1y; \
+        add_header Cache-Control "public, immutable"; \
+    } \
+    \
+    # Serve HTML files \
+    location / { \
+        try_files $uri $uri/ /index.html =404; \
+    } \
+    \
+    # Security headers \
+    add_header X-Frame-Options "SAMEORIGIN" always; \
+    add_header X-Content-Type-Options "nosniff" always; \
+    add_header X-XSS-Protection "1; mode=block" always; \
+}' > /etc/nginx/conf.d/default.conf
 
 # Expose port
-EXPOSE 3000
+EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000', (r) => {if (r.statusCode !== 200) throw new Error(r.statusCode)})"
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+    CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
 
-# Start application
-CMD ["npm", "start"]
+# Start nginx
+CMD ["nginx", "-g", "daemon off;"]
