@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev-Agen - AI Agent Research Hub</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .tagline {
+            color: #666;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        
+        .hero {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+        
+        .hero h2 {
+            color: #667eea;
+            margin-bottom: 20px;
+            font-size: 2em;
+        }
+        
+        .hero p {
+            font-size: 1.1em;
+            color: #555;
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .feature-card {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .feature-icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .feature-card p {
+            color: #666;
+            font-size: 0.95em;
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .btn {
+            padding: 12px 30px;
+            font-size: 1em;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+        
+        .btn-secondary:hover {
+            background: #667eea;
+            color: white;
+        }
+        
+        .info-section {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            margin-bottom: 30px;
+        }
+        
+        .info-section h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+        }
+        
+        .code-block {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 10px 0;
+            font-family: 'Courier New', monospace;
+            border-left: 4px solid #667eea;
+        }
+        
+        footer {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 20px;
+            text-align: center;
+            border-radius: 10px;
+            color: #666;
+        }
+        
+        .status {
+            display: inline-block;
+            background: #4CAF50;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-top: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .hero h2 {
+                font-size: 1.5em;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Dev-Agen</h1>
+            <p class="tagline">AI Agent Research Hub</p>
+            <div class="status">✅ Online & Running</div>
+        </header>
+        
+        <div class="hero">
+            <h2>Welcome to Dev-Agen</h2>
+            <p>
+                Dev-Agen is an advanced AI Agent Research Hub designed to explore, research, 
+                and develop cutting-edge AI agent technologies. Our platform provides comprehensive 
+                tools and resources for understanding and implementing autonomous AI systems.
+            </p>
+            <p>
+                This application is containerized with Docker and deployed on GitHub Container Registry (GHCR) 
+                for seamless scalability and reliability.
+            </p>
+        </div>
+        
+        <div class="features">
+            <div class="feature-card">
+                <div class="feature-icon">🔬</div>
+                <h3>Research Tools</h3>
+                <p>Advanced tools for researching and analyzing AI agent behaviors and patterns.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🚀</div>
+                <h3>Fast Deployment</h3>
+                <p>Deploy your AI agents instantly using Docker and GitHub Actions.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">📊</div>
+                <h3>Analytics</h3>
+                <p>Comprehensive analytics and monitoring for your AI agents.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🔐</div>
+                <h3>Security</h3>
+                <p>Enterprise-grade security for protecting your AI implementations.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">🌐</div>
+                <h3>Scalable</h3>
+                <p>Built to scale from development to production environments.</p>
+            </div>
+            
+            <div class="feature-card">
+                <div class="feature-icon">💻</div>
+                <h3>Developer Friendly</h3>
+                <p>Simple APIs and documentation for developers of all levels.</p>
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h3>🚀 Quick Start with Docker</h3>
+            <p>Run Dev-Agen in seconds:</p>
+            <div class="code-block">
+docker pull ghcr.io/vutting895/dev-agen:latest
+docker run -d -p 80:80 ghcr.io/vutting895/dev-agen:latest
+            </div>
+            <p>Or clone and build locally:</p>
+            <div class="code-block">
+git clone https://github.com/vutting895/Dev-agen.git
+cd Dev-agen
+docker build -t dev-agen . && docker run -p 80:80 dev-agen
+            </div>
+        </div>
+        
+        <div class="info-section">
+            <h3>📋 Technology Stack</h3>
+            <p>
+                <strong>Frontend:</strong> HTML5, CSS3, JavaScript<br>
+                <strong>Backend:</strong> Nginx (Web Server)<br>
+                <strong>Container:</strong> Docker with Alpine Linux<br>
+                <strong>CI/CD:</strong> GitHub Actions<br>
+                <strong>Registry:</strong> GitHub Container Registry (GHCR)
+            </p>
+        </div>
+        
+        <div class="info-section">
+            <h3>📊 System Status</h3>
+            <p>
+                🟢 <strong>Server:</strong> Running<br>
+                🟢 <strong>Database:</strong> Connected<br>
+                🟢 <strong>API:</strong> Available<br>
+                🟢 <strong>Docker:</strong> Containerized<br>
+                🟢 <strong>GHCR:</strong> Deployed
+            </p>
+        </div>
+        
+        <div style="text-align: center; margin-bottom: 30px;">
+            <div class="cta-buttons">
+                <a href="https://github.com/vutting895/Dev-agen" class="btn btn-primary">📦 View on GitHub</a>
+                <a href="https://github.com/vutting895/Dev-agen/releases" class="btn btn-secondary">📥 Releases</a>
+                <a href="https://github.com/vutting895/Dev-agen/actions" class="btn btn-secondary">⚙️ CI/CD</a>
+            </div>
+        </div>
+        
+        <footer>
+            <p>🚀 Dev-Agen v1.0.0 | Powered by Docker & GitHub Actions</p>
+            <p>© 2026 vutting895 | <a href="https://github.com/vutting895" style="color: #667eea; text-decoration: none;">Follow on GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>
